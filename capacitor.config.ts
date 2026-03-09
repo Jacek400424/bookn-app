@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: "Book'n",
   webDir: 'www',
   server: {
-    url: 'https://app.booknbuddy.com/customer.html',
+    url: 'https://app.booknbuddy.com/login.html',
     cleartext: false
   },
   ios: {

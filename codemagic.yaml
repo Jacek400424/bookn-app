@@ -10,17 +10,13 @@
         - code-signing
       vars:
         XCODE_SCHEME: App
-        XCODE_WORKSPACE: ios/App/App.xcworkspace
+        XCODE_PROJECT: ios/App/App.xcodeproj
         BUNDLE_ID: com.booknbuddy.app
     scripts:
       - name: Install dependencies
         script: npm install
       - name: Sync Capacitor
         script: npx cap sync ios
-      - name: Install CocoaPods
-        script: |
-          cd ios/App
-          pod install
       - name: Initialize keychain
         script: keychain initialize
       - name: Fetch signing files
@@ -36,7 +32,7 @@
       - name: Build iOS app
         script: |
           xcode-project build-ipa \
-            --workspace "$XCODE_WORKSPACE" \
+            --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME" \
             --config Release
     artifacts:

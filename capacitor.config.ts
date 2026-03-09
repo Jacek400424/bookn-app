@@ -6,13 +6,15 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     url: 'https://app.booknbuddy.com/login.html',
-    cleartext: false
+    cleartext: false,
+    allowNavigation: ['app.booknbuddy.com', '*.booknbuddy.com', '*.stripe.com', '*.firebaseapp.com', '*.googleapis.com']
   },
   ios: {
     contentInset: 'automatic',
     backgroundColor: '#0a1628',
     preferredContentMode: 'mobile',
-    scheme: 'BooknApp'
+    scheme: 'BooknApp',
+    allowsLinkPreview: false
   },
   plugins: {
     SplashScreen: {

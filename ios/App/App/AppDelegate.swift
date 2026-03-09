@@ -21,10 +21,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
 
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+        
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        print("APNs token: \(token)")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            if let rootVC = self.window?.rootViewController,
+               let webViewVC = rootVC as? CAPBridgeViewController {
+                webViewVC.bridge?.webView?.evaluateJavaScript("window.nativeAPNsToken = '\(token)'; if(window.onAPNsToken) window.onAPNsToken('\(token)');", completionHandler: nil)
+            }
+        }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+        print("Push registration failed: \(error)")
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

@@ -33,6 +33,15 @@ workflows:
         script: keychain add-certificates
       - name: Set up profiles
         script: xcode-project use-profiles
+      - name: Test build verbose
+        script: |
+          xcodebuild -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -config Release \
+            -archivePath build/ios/App.xcarchive \
+            archive \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | grep -E "error:|warning:.*Push|warning:.*provision|ARCHIVE"
       - name: Build iOS app
         script: |
           xcode-project build-ipa \

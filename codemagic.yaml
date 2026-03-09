@@ -6,12 +6,10 @@ workflows:
     integrations:
       app_store_connect: Bookn
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.booknbuddy.app
       vars:
         XCODE_SCHEME: App
         XCODE_PROJECT: ios/App/App.xcodeproj
+        BUNDLE_ID: com.booknbuddy.app
     scripts:
       - name: Install dependencies
         script: |
@@ -21,8 +19,8 @@ workflows:
           npx cap sync ios
       - name: Fetch signing files
         script: |
-          app-store-connect fetch-signing-files com.booknbuddy.app --type IOS_APP_STORE --create
-      - name: Set up code signing
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+      - name: Set up keychain and profiles
         script: |
           keychain initialize
           app-store-connect certificates list --type IOS_DISTRIBUTION --save

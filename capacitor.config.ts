@@ -1,4 +1,4 @@
-import type { CapacitorConfig } from '@capacitor/cli';
+﻿import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.booknbuddy.app',
@@ -10,8 +10,8 @@ const config: CapacitorConfig = {
     allowNavigation: ['app.booknbuddy.com', '*.booknbuddy.com', '*.stripe.com', '*.firebaseapp.com', '*.googleapis.com']
   },
   ios: {
-    contentInset: 'automatic',
-    backgroundColor: '#0a1628',
+    contentInset: 'always',
+    backgroundColor: '#ffffff',
     preferredContentMode: 'mobile',
     scheme: 'BooknApp',
     allowsLinkPreview: false
@@ -26,8 +26,9 @@ const config: CapacitorConfig = {
       splashImmersive: true
     },
     StatusBar: {
-      style: 'LIGHT',
-      backgroundColor: '#0a1628'
+      style: 'DARK',
+      backgroundColor: '#ffffff',
+      overlaysWebView: true
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']

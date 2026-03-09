@@ -27,6 +27,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         return true
     }
 
+    func applicationDidBecomeActive(_ application: UIApplication) {
+        UIApplication.shared.applicationIconBadgeNumber = 0
+    }
+
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
         Messaging.messaging().apnsToken = deviceToken
         Messaging.messaging().token { token, error in
@@ -56,8 +60,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         }
     }
 
-    // Inject the token into the webpage — the JS handles saving it to Firestore
-    // using the authenticated Firebase session (no auth issues this way)
     func passTokenToWebpage(token: String) {
         DispatchQueue.main.async {
             guard let rootVC = self.window?.rootViewController else {
@@ -75,7 +77,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
     
     func evaluateJavaScript(_ js: String, in viewController: UIViewController) {
-        // Try the view controller's view hierarchy for a WKWebView
         if let webView = findWebView(in: viewController.view) {
             webView.evaluateJavaScript(js) { result, error in
                 if let error = error {
@@ -86,8 +87,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             }
             return
         }
-        
-        // Check child view controllers (Capacitor nests the webview)
         for child in viewController.children {
             evaluateJavaScript(js, in: child)
         }
@@ -110,6 +109,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        UIApplication.shared.applicationIconBadgeNumber = 0
         completionHandler()
     }
 }

@@ -1,11 +1,13 @@
-﻿import UIKit
+import UIKit
 import Capacitor
 import UserNotifications
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
+    var apnsToken: String?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
@@ -16,6 +18,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                 }
             }
         }
+        
+        // Periodically try to inject token into WebView
+        Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] timer in
+            guard let token = self?.apnsToken else { return }
+            self?.injectTokenIntoWebView(token: token)
+        }
+        
         return true
     }
 
@@ -23,14 +32,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
         
         let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
-        print("APNs token: \(token)")
+        self.apnsToken = token
+        print("APNs token received: \(token)")
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            if let rootVC = self.window?.rootViewController,
-               let webViewVC = rootVC as? CAPBridgeViewController {
-                webViewVC.bridge?.webView?.evaluateJavaScript("window.nativeAPNsToken = '\(token)'; if(window.onAPNsToken) window.onAPNsToken('\(token)');", completionHandler: nil)
+        // Try to inject immediately
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.injectTokenIntoWebView(token: token)
+        }
+    }
+    
+    func injectTokenIntoWebView(token: String) {
+        DispatchQueue.main.async {
+            guard let window = self.window,
+                  let rootVC = window.rootViewController else { return }
+            
+            // Try to find the WKWebView in the view hierarchy
+            if let webView = self.findWebView(in: rootVC.view) {
+                let js = "window.nativeAPNsToken = '\(token)'; if(window.onAPNsToken) { window.onAPNsToken('\(token)'); }"
+                webView.evaluateJavaScript(js) { result, error in
+                    if let error = error {
+                        print("JS injection error: \(error.localizedDescription)")
+                    } else {
+                        print("APNs token injected into WebView")
+                    }
+                }
             }
         }
+    }
+    
+    func findWebView(in view: UIView) -> WKWebView? {
+        if let webView = view as? WKWebView {
+            return webView
+        }
+        for subview in view.subviews {
+            if let found = findWebView(in: subview) {
+                return found
+            }
+        }
+        return nil
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

@@ -1,4 +1,4 @@
-workflows:
+﻿workflows:
   ios-release:
     name: iOS Release
     max_build_duration: 30
@@ -12,32 +12,20 @@ workflows:
         BUNDLE_ID: com.booknbuddy.app
     scripts:
       - name: Install dependencies
-        script: |
-          npm install
+        script: npm install
       - name: Sync Capacitor
-        script: |
-          npx cap sync ios
+        script: npx cap sync ios
       - name: Initialize keychain
-        script: |
-          keychain initialize
+        script: keychain initialize
       - name: Fetch signing files
         script: |
-          app-store-connect certificates list \
-            --type IOS_DISTRIBUTION \
-            --certificate-key="$CM_CERTIFICATE_PRIVATE_KEY" \
-            --save
-          app-store-connect profiles list \
-            --bundle-id "$BUNDLE_ID" \
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
-            --certificate-key="$CM_CERTIFICATE_PRIVATE_KEY" \
-            --create \
-            --save
+            --create
       - name: Add certificates to keychain
-        script: |
-          keychain add-certificates
+        script: keychain add-certificates
       - name: Set up profiles
-        script: |
-          xcode-project use-profiles
+        script: xcode-project use-profiles
       - name: Build iOS app
         script: |
           xcode-project build-ipa \

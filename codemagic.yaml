@@ -17,8 +17,10 @@
         script: npx cap sync ios
       - name: Initialize keychain
         script: keychain initialize
-      - name: Fetch signing files
+      - name: Generate key and fetch signing files
         script: |
+          openssl req -nodes -newkey rsa:2048 -keyout /tmp/cert_key.pem -out /tmp/cert_csr.pem -subj "/CN=Bookn/O=Bookn Inc/C=CA" 2>/dev/null
+          export CM_CERTIFICATE_PRIVATE_KEY=$(cat /tmp/cert_key.pem)
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --create

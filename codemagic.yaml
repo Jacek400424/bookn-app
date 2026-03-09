@@ -9,8 +9,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.booknbuddy.app
-        provisioning_profiles: []
-        certificates: automatic
       vars:
         XCODE_SCHEME: App
         XCODE_PROJECT: ios/App/App.xcodeproj
@@ -21,15 +19,14 @@ workflows:
       - name: Sync Capacitor
         script: |
           npx cap sync ios
-      - name: Create provisioning profile
+      - name: Fetch signing files
         script: |
-          app-store-connect create-profile \
-            --bundle-id com.booknbuddy.app \
-            --type IOS_APP_STORE \
-            --certificate-key "$CM_CERTIFICATE_PRIVATE_KEY" \
-            --save
+          app-store-connect fetch-signing-files com.booknbuddy.app --type IOS_APP_STORE --create
       - name: Set up code signing
         script: |
+          keychain initialize
+          app-store-connect certificates list --type IOS_DISTRIBUTION --save
+          keychain add-certificates
           xcode-project use-profiles
       - name: Build iOS app
         script: |

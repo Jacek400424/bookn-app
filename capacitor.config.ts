@@ -10,8 +10,7 @@ const config: CapacitorConfig = {
     allowNavigation: ['app.booknbuddy.com', '*.booknbuddy.com', '*.stripe.com', '*.firebaseapp.com', '*.googleapis.com']
   },
   ios: {
-    contentInset: 'always',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#0a1628',
     preferredContentMode: 'mobile',
     scheme: 'BooknApp',
     allowsLinkPreview: false
@@ -24,11 +23,6 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true
-    },
-    StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#ffffff',
-      overlaysWebView: true
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']

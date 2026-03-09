@@ -3,8 +3,6 @@ import Capacitor
 import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
-import FirebaseAuth
-import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
@@ -26,14 +24,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             }
         }
         
-        // Listen for auth state changes
-        Auth.auth().addStateDidChangeListener { auth, user in
-            if let user = user, let token = self.fcmToken {
-                print("User signed in: \(user.uid), saving FCM token")
-                self.saveTokenToFirestore(uid: user.uid, token: token)
-            }
-        }
-        
         return true
     }
 
@@ -42,61 +32,77 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         Messaging.messaging().token { token, error in
             if let error = error {
                 NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
-                print("FCM token error: \(error)")
+                print("❌ FCM token error: \(error)")
             } else if let token = token {
                 NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
                 self.fcmToken = token
-                print("FCM token: \(token)")
-                // If user is already signed in, save immediately
-                if let user = Auth.auth().currentUser {
-                    self.saveTokenToFirestore(uid: user.uid, token: token)
-                }
+                print("✅ FCM token obtained: \(token.prefix(20))...")
+                self.passTokenToWebpage(token: token)
             }
         }
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
-        print("Push registration failed: \(error)")
+        print("❌ Push registration failed: \(error)")
     }
 
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        print("FCM token refreshed: \(fcmToken ?? "nil")")
+        print("🔄 FCM token refreshed")
         if let token = fcmToken {
             self.fcmToken = token
             NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
-            if let user = Auth.auth().currentUser {
-                saveTokenToFirestore(uid: user.uid, token: token)
+            self.passTokenToWebpage(token: token)
+        }
+    }
+
+    // Inject the token into the webpage — the JS handles saving it to Firestore
+    // using the authenticated Firebase session (no auth issues this way)
+    func passTokenToWebpage(token: String) {
+        DispatchQueue.main.async {
+            guard let rootVC = self.window?.rootViewController else {
+                print("⚠️ No root view controller yet, will retry in 2s")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self.passTokenToWebpage(token: token)
+                }
+                return
             }
+            
+            let js = "if(typeof window.saveFCMToken==='function'){window.saveFCMToken('\(token)');}else{window.__pendingFCMToken='\(token)';console.log('📲 FCM token queued (saveFCMToken not ready yet)');}";
+            
+            self.evaluateJavaScript(js, in: rootVC)
         }
     }
     
-    func saveTokenToFirestore(uid: String, token: String) {
-        let projectId = "calendar-b7a60"
-        let urlString = "https://firestore.googleapis.com/v1/projects/\(projectId)/databases/(default)/documents/users/\(uid)?updateMask.fieldPaths=apnsToken&updateMask.fieldPaths=fcmToken"
-        
-        guard let url = URL(string: urlString) else { return }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "PATCH"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        
-        let body: [String: Any] = [
-            "fields": [
-                "apnsToken": ["stringValue": token],
-                "fcmToken": ["stringValue": token]
-            ]
-        ]
-        
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Failed to save token: \(error)")
-            } else if let httpResponse = response as? HTTPURLResponse {
-                print("Firestore response: \(httpResponse.statusCode)")
+    func evaluateJavaScript(_ js: String, in viewController: UIViewController) {
+        // Try the view controller's view hierarchy for a WKWebView
+        if let webView = findWebView(in: viewController.view) {
+            webView.evaluateJavaScript(js) { result, error in
+                if let error = error {
+                    print("⚠️ JS eval error: \(error.localizedDescription)")
+                } else {
+                    print("✅ FCM token passed to webpage JS")
+                }
             }
-        }.resume()
+            return
+        }
+        
+        // Check child view controllers (Capacitor nests the webview)
+        for child in viewController.children {
+            evaluateJavaScript(js, in: child)
+        }
+    }
+    
+    func findWebView(in view: UIView) -> WKWebView? {
+        if let webView = view as? WKWebView {
+            return webView
+        }
+        for subview in view.subviews {
+            if let found = findWebView(in: subview) {
+                return found
+            }
+        }
+        return nil
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {

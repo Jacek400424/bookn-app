@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: macos-latest
 
+    env:
+      KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+      ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -27,19 +32,78 @@ jobs:
           APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
         run: |
           mkdir -p ~/private_keys
-          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8
+          echo "$APP_STORE_CONNECT_PRIVATE_KEY" > ~/private_keys/AuthKey_${KEY_ID}.p8
 
-      - name: Install Apple Certificate
+      - name: Create Distribution Certificate and Profile
         run: |
-          # Use xcodebuild to download and install signing assets automatically
           cd ios/App
-          xcodebuild -project App.xcodeproj \
-            -scheme App \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
-            -resolvePackageDependencies
+          # First create a certificate signing request and get distribution cert
+          # Use xcrun to interact with App Store Connect API
+          API_KEY_PATH=~/private_keys/AuthKey_${KEY_ID}.p8
+          
+          # Create a temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -hex 16)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychains -d user -s $KEYCHAIN_PATH $(security list-keychains -d user | tr -d '"')
+          
+          # Generate a CSR
+          openssl req -new -newkey rsa:2048 -nodes \
+            -keyout $RUNNER_TEMP/dist.key \
+            -out $RUNNER_TEMP/dist.csr \
+            -subj "/CN=Book'n Inc/O=Book'n Inc/C=CA"
+          
+          # Use the App Store Connect API to create a distribution certificate
+          # First get a JWT token
+          HEADER=$(echo -n '{"alg":"ES256","kid":"'${KEY_ID}'","typ":"JWT"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+          NOW=$(date +%s)
+          EXP=$(($NOW + 1200))
+          PAYLOAD=$(echo -n '{"iss":"'${ISSUER_ID}'","iat":'$NOW',"exp":'$EXP',"aud":"appstoreconnect-v1"}' | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+          SIGNATURE=$(echo -n "${HEADER}.${PAYLOAD}" | openssl dgst -sha256 -sign $API_KEY_PATH -binary | base64 | tr -d '=' | tr '/+' '_-' | tr -d '\n')
+          JWT="${HEADER}.${PAYLOAD}.${SIGNATURE}"
+          
+          CSR_CONTENT=$(base64 < $RUNNER_TEMP/dist.csr | tr -d '\n')
+          
+          # Create distribution certificate via API
+          CERT_RESPONSE=$(curl -s -X POST \
+            "https://api.appstoreconnect.apple.com/v1/certificates" \
+            -H "Authorization: Bearer $JWT" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "data": {
+                "type": "certificates",
+                "attributes": {
+                  "csrContent": "'$CSR_CONTENT'",
+                  "certificateType": "DISTRIBUTION"
+                }
+              }
+            }')
+          
+          echo "Certificate response received"
+          
+          # Extract the certificate content
+          CERT_CONTENT=$(echo $CERT_RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['attributes']['certificateContent'])" 2>/dev/null || true)
+          
+          if [ -z "$CERT_CONTENT" ]; then
+            echo "Trying to list existing certificates..."
+            CERTS=$(curl -s \
+              "https://api.appstoreconnect.apple.com/v1/certificates?filter[certificateType]=DISTRIBUTION" \
+              -H "Authorization: Bearer $JWT")
+            CERT_CONTENT=$(echo $CERTS | python3 -c "import sys,json; certs=json.load(sys.stdin)['data']; print(certs[0]['attributes']['certificateContent'] if certs else '')" 2>/dev/null || true)
+          fi
+          
+          if [ -n "$CERT_CONTENT" ]; then
+            echo "$CERT_CONTENT" | base64 -d > $RUNNER_TEMP/dist.cer
+            security import $RUNNER_TEMP/dist.cer -k $KEYCHAIN_PATH -T /usr/bin/codesign
+            security import $RUNNER_TEMP/dist.key -k $KEYCHAIN_PATH -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+            echo "Distribution certificate installed"
+          else
+            echo "Warning: Could not get distribution certificate"
+            echo $CERT_RESPONSE
+          fi
 
       - name: Build and Archive
         run: |
@@ -51,13 +115,10 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath $RUNNER_TEMP/App.xcarchive \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
             archive
 
       - name: Export IPA
@@ -86,7 +147,7 @@ jobs:
             -exportOptionsPlist ExportOptions.plist \
             -exportPath $RUNNER_TEMP/export \
             -allowProvisioningUpdates \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.APP_STORE_CONNECT_KEY_ID }}.p8 \
+            -authenticationKeyPath ~/private_keys/AuthKey_${KEY_ID}.p8 \
             -authenticationKeyID ${{ secrets.APP_STORE_CONNECT_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
 

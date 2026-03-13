@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "678529183260",
+    "project_id": "calendar-b7a60",
+    "storage_bucket": "calendar-b7a60.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:678529183260:android:820c78e7ea5207fa88f9d9",
+        "android_client_info": {
+          "package_name": "com.booknbuddy.business"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNspcukKfMLvgHTOfQKo_outSFRkFuPpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -54,3 +54,40 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
+
+  android-release:
+    name: Android Release
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - code-signing
+      vars:
+        PACKAGE_NAME: com.booknbuddy.app
+    scripts:
+      - name: Install dependencies
+        script: npm install
+      - name: Sync Capacitor
+        script: npx cap sync android
+      - name: Build Android release
+        script: |
+          cd android
+          ./gradlew bundleRelease
+      - name: Sign Android release
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > /tmp/keystore.jks
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore /tmp/keystore.jks \
+            -storepass $CM_KEYSTORE_PASSWORD \
+            -keypass $CM_KEYSTORE_PASSWORD \
+            android/app/build/outputs/bundle/release/app-release.aab \
+            $CM_KEY_ALIAS
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true

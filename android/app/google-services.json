@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:678529183260:android:7a25c60087930f9d88f9d9",
+        "android_client_info": {
+          "package_name": "com.booknbuddy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNspcukKfMLvgHTOfQKo_outSFRkFuPpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:678529183260:android:820c78e7ea5207fa88f9d9",
         "android_client_info": {
           "package_name": "com.booknbuddy.business"

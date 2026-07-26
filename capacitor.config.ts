@@ -19,7 +19,9 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 2000,
       launchAutoHide: true,
-      backgroundColor: '#0a1628',
+      // Matches the navy sampled from the BooknBuddy badge in the splash art
+      // exactly — any difference shows as a seam around the image during the fade.
+      backgroundColor: '#001731',
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true

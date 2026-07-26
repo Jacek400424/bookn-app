@@ -10,7 +10,9 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@capacitor-community/in-app-review": "^8.0.0",
     "@capacitor/android": "^8.2.0",
+    "@capacitor/app": "^8.1.1",
     "@capacitor/camera": "^8.0.2",
     "@capacitor/core": "^8.2.0",
     "@capacitor/ios": "^8.2.0",

@@ -22,6 +22,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep link: get-app.html fires booknapp://customer?connect=<businessId>
+                 so a business's invite link carries the businessId INTO the app.
+                 Scheme must be lowercase — Android matches it case-sensitively. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="booknapp" />
+            </intent-filter>
+
         </activity>
 
         <provider

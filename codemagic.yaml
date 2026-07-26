@@ -15,7 +15,7 @@ workflows:
         # Single source of truth for the shipped version. BUMP BN_MARKETING_VERSION
         # for every App Store submission — an approved train never reopens.
         BN_MARKETING_VERSION: '1.2'
-        BN_BUILD_NUMBER: 26
+        BN_BUILD_NUMBER: 27
     scripts:
       - name: Install dependencies
         script: npm install

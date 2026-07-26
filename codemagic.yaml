@@ -12,6 +12,10 @@ workflows:
         XCODE_SCHEME: App
         XCODE_WORKSPACE: ios/App/App.xcworkspace
         BUNDLE_ID: com.booknbuddy.app
+        # Single source of truth for the shipped version. BUMP BN_MARKETING_VERSION
+        # for every App Store submission — an approved train never reopens.
+        BN_MARKETING_VERSION: '1.2'
+        BN_BUILD_NUMBER: 26
     scripts:
       - name: Install dependencies
         script: npm install
@@ -42,6 +46,23 @@ workflows:
             archive \
             COMPILER_INDEX_STORE_ENABLE=NO \
             2>&1 | grep -E "error:|warning:.*Push|warning:.*provision|ARCHIVE"
+      # Stamp the version LAST, right before the archive — see bookn-business for
+      # the full rationale. App Store Connect closes a version "train" once it is
+      # approved, so a duplicate CFBundleShortVersionString fails the upload only
+      # AFTER a complete successful build.
+      - name: Stamp + verify version
+        script: |
+          set -e
+          PLIST=ios/App/App/Info.plist
+          echo "--- commit checked out ---"; git rev-parse --short HEAD
+          echo "--- BEFORE ---"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $BN_MARKETING_VERSION" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BN_BUILD_NUMBER" "$PLIST"
+          echo "--- AFTER (this is what ships) ---"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST"
       - name: Build iOS app
         script: |
           xcode-project build-ipa \

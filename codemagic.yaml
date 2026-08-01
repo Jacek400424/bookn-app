@@ -14,8 +14,8 @@ workflows:
         BUNDLE_ID: com.booknbuddy.app
         # Single source of truth for the shipped version. BUMP BN_MARKETING_VERSION
         # for every App Store submission — an approved train never reopens.
-        BN_MARKETING_VERSION: '1.2'
-        BN_BUILD_NUMBER: 27
+        BN_MARKETING_VERSION: '1.2.1'
+        BN_BUILD_NUMBER: 28
     scripts:
       - name: Install dependencies
         script: npm install

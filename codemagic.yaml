@@ -121,6 +121,7 @@ workflows:
     publishing:
       email:
         recipients:
+          - jacek@booknbuddy.com
           - jack400424@gmail.com
         notify:
           success: true

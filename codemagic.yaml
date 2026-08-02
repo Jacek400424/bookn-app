@@ -106,5 +106,22 @@ workflows:
             -keypass $CM_KEYSTORE_PASSWORD \
             android/app/build/outputs/bundle/release/app-release.aab \
             $CM_KEY_ALIAS
+      # A .aab CANNOT be installed on a phone -- it is a publishing format Google
+      # unpacks per-device, so it only reaches a handset via the Play Store. This
+      # debug APK is self-signed and sideloadable, which is the only way onto a
+      # device whose Play Store does not work (the ZTE is not Play-certified).
+      # Same icons, same WebView shell, so it is a faithful check of the artwork.
+      - name: Build sideloadable debug APK
+        script: |
+          cd android
+          ./gradlew assembleDebug
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
+      - android/app/build/outputs/apk/debug/*.apk
+    publishing:
+      email:
+        recipients:
+          - jack400424@gmail.com
+        notify:
+          success: true
+          failure: true
